@@ -97,6 +97,10 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
         case 'webviewReady':
           await sendDocumentData();
           break;
+        case 'copyToClipboard':
+          await vscode.env.clipboard.writeText(msg.text);
+          vscode.window.showInformationMessage(msg.infoMessage || 'Panoya kopyalandı!');
+          break;
         case 'showErrorMessage':
           vscode.window.showErrorMessage(msg.text);
           break;
@@ -150,6 +154,18 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
         <select id="sheet-select" class="toolbar-select"></select>
       </div>
 
+      <!-- Delimiter Selector for CSV -->
+      <div id="delimiter-selector-container" class="toolbar-group hidden">
+        <label for="delimiter-select" class="toolbar-label">Ayraç:</label>
+        <select id="delimiter-select" class="toolbar-select">
+          <option value="auto">Otomatik</option>
+          <option value=",">Virgül (,)</option>
+          <option value=";">Noktalı Virgül (;)</option>
+          <option value="&#9;">Tab (\t)</option>
+          <option value="|">Dikey Çizgi (|)</option>
+        </select>
+      </div>
+
       <!-- Zoom Controls for Word -->
       <div id="zoom-controls" class="toolbar-group">
         <button id="btn-zoom-out" class="toolbar-btn" title="Uzaklaştır (−)">−</button>
@@ -166,6 +182,18 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
     </div>
 
     <div class="toolbar-right">
+      <!-- Developer Tools: Export/Copy -->
+      <div id="dev-export-group" class="toolbar-group">
+        <button id="btn-copy-md" class="toolbar-btn text-btn" title="Tabloyu Markdown formatında kopyala">
+          <span>📋</span>
+          <span>Markdown</span>
+        </button>
+        <button id="btn-copy-json" class="toolbar-btn text-btn" title="Tabloyu JSON dizisi olarak kopyala">
+          <span>{ }</span>
+          <span>JSON</span>
+        </button>
+      </div>
+
       <!-- Print Button -->
       <button id="btn-print" class="toolbar-btn text-btn" title="Yazdır veya PDF olarak kaydet">
         <span>🖨️</span>

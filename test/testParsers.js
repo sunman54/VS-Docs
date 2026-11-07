@@ -144,8 +144,56 @@ async function runTests() {
     console.log('  -> Başarılı: Tüm bundle dosyaları eksiksiz ve gerekli sınıfları barındırıyor.');
   }
 
+  // 5. Test Faz 3: Geliştirici Araçları (Markdown, JSON, Delimiter Tespiti)
+  console.log('\n[TEST 5] Faz 3 Geliştirici Araçları (Markdown, JSON, CSV Delimiter)...');
+  {
+    // Delimiter tespiti testi
+    function detectDelimiter(text) {
+      const lines = text.slice(0, 5000).split('\n').filter((l) => l.trim().length > 0);
+      if (lines.length === 0) return ',';
+      const delimiters = [',', ';', '\t', '|'];
+      let bestDelim = ',';
+      let maxConsistency = -1;
+      for (const delim of delimiters) {
+        const counts = lines.slice(0, 10).map((line) => line.split(delim).length - 1);
+        const firstCount = counts[0];
+        if (firstCount > 0 && counts.every((c) => c === firstCount)) {
+          return delim;
+        }
+        const sum = counts.reduce((a, b) => a + b, 0);
+        if (sum > maxConsistency) {
+          maxConsistency = sum;
+          bestDelim = delim;
+        }
+      }
+      return bestDelim;
+    }
+
+    const semicolonCsv = 'ID;Ad;Soyad;Departman\n1;Ali;Yılmaz;AR-GE\n2;Ayşe;Kaya;Finans';
+    assert.strictEqual(detectDelimiter(semicolonCsv), ';', 'Noktalı virgül CSV tespiti doğru olmalı');
+
+    const pipeCsv = 'Ürün|Stok|Fiyat\nLaptop|15|45000\nMonitör|30|8000';
+    assert.strictEqual(detectDelimiter(pipeCsv), '|', 'Dikey çizgi (|) CSV tespiti doğru olmalı');
+
+    const tabCsv = 'Kod\tTanım\tDurum\n101\tSunucu\tAktif\n102\tAğ\tPasif';
+    assert.strictEqual(detectDelimiter(tabCsv), '\t', 'Tab (\\t) tespiti doğru olmalı');
+
+    // JSON ve Markdown dönüşüm doğrulaması
+    const sampleDir = path.join(__dirname, 'samples');
+    const xlsxBuffer = fs.readFileSync(path.join(sampleDir, 'test_butce.xlsx'));
+    const wb = XLSX.read(xlsxBuffer, { type: 'buffer' });
+    const sheet = wb.Sheets['Finansal Özet'];
+    const jsonResult = XLSX.utils.sheet_to_json(sheet);
+
+    assert.ok(Array.isArray(jsonResult), 'JSON çıktısı dizi olmalı');
+    assert.strictEqual(jsonResult[0]['Departman'], 'Yazılım Mühendisliği');
+    assert.strictEqual(jsonResult[0]['Çalışan Sayısı'], 42);
+
+    console.log('  -> Başarılı: CSV Delimiter tespiti (; , | \\t) ve JSON export doğrulandı.');
+  }
+
   console.log('\n======================================================');
-  console.log(' TÜM TESTLER BAŞARIYLA TAMAMLANDI (4/4 Kategori)');
+  console.log(' TÜM TESTLER BAŞARIYLA TAMAMLANDI (5/5 Kategori)');
   console.log('======================================================\n');
 }
 

@@ -1,5 +1,5 @@
 import { ThemeManager, VsCodeThemeKind } from './themeManager';
-import { renderDocx } from './renderers/docxRenderer';
+import { renderDocx, adjustDocxColorsForTheme } from './renderers/docxRenderer';
 import { ExcelViewer } from './renderers/excelRenderer';
 import { renderLegacyDoc } from './renderers/legacyDocRenderer';
 
@@ -9,7 +9,6 @@ declare function acquireVsCodeApi(): {
   setState: (state: any) => void;
 };
 
-// Main Webview Controller
 class WebviewApp {
   private vscode = acquireVsCodeApi();
   private themeManager: ThemeManager;
@@ -25,6 +24,10 @@ class WebviewApp {
   private viewerContainer = document.getElementById('viewer-container');
   private documentContent = document.getElementById('document-content');
 
+  // Status Bar
+  private statusSelectionEl = document.getElementById('status-selection');
+  private statusStatsEl = document.getElementById('status-stats');
+
   // Zoom elements
   private zoomControls = document.getElementById('zoom-controls');
   private btnZoomIn = document.getElementById('btn-zoom-in');
@@ -37,20 +40,46 @@ class WebviewApp {
   private searchInput = document.getElementById('search-input') as HTMLInputElement | null;
   private searchCountEl = document.getElementById('search-count');
 
+  // CSV Delimiter elements
+  private delimiterContainer = document.getElementById('delimiter-selector-container');
+  private delimiterSelect = document.getElementById('delimiter-select') as HTMLSelectElement | null;
+
+  // Export & Action elements
+  private btnCopyMd = document.getElementById('btn-copy-md');
+  private btnCopyJson = document.getElementById('btn-copy-json');
+  private btnPrint = document.getElementById('btn-print');
+
   // Current doc state
   private currentExt = '';
+  private currentBuffer: ArrayBuffer | null = null;
 
   constructor() {
     this.themeManager = new ThemeManager();
 
     if (this.documentContent) {
-      this.excelViewer = new ExcelViewer(this.documentContent);
+      this.excelViewer = new ExcelViewer(this.documentContent, {
+        onCellSelected: (addr, val) => {
+          if (this.statusSelectionEl) {
+            this.statusSelectionEl.textContent = `Hücre ${addr}: ${val}`;
+          }
+        },
+        onStatsUpdated: (info) => {
+          if (this.statusStatsEl) {
+            this.statusStatsEl.textContent = info;
+          }
+        },
+        onSelectionStats: (stats) => {
+          if (this.statusSelectionEl) {
+            this.statusSelectionEl.textContent = stats;
+          }
+        },
+      });
     }
 
     this.initEventListeners();
     this.initMessageListener();
 
-    // Notify extension host that webview is ready to receive data
+    // Signal extension host that webview is ready
     this.vscode.postMessage({ command: 'webviewReady' });
   }
 
@@ -64,6 +93,29 @@ class WebviewApp {
     this.btnZoomIn?.addEventListener('click', () => this.adjustZoom(0.1));
     this.btnZoomOut?.addEventListener('click', () => this.adjustZoom(-0.1));
     this.btnZoomReset?.addEventListener('click', () => this.resetZoom());
+
+    // Print button
+    this.btnPrint?.addEventListener('click', () => {
+      window.print();
+    });
+
+    // Copy as Markdown
+    this.btnCopyMd?.addEventListener('click', () => {
+      this.handleCopyMarkdown();
+    });
+
+    // Copy as JSON
+    this.btnCopyJson?.addEventListener('click', () => {
+      this.handleCopyJson();
+    });
+
+    // CSV Delimiter change
+    this.delimiterSelect?.addEventListener('change', (e) => {
+      const val = (e.target as HTMLSelectElement).value;
+      if (this.excelViewer && ['csv', 'tsv'].includes(this.currentExt)) {
+        this.excelViewer.reparseCsvWithDelimiter(val);
+      }
+    });
 
     // Search input
     let searchDebounceTimer: any = null;
@@ -80,6 +132,7 @@ class WebviewApp {
       const message = event.data;
       switch (message.command) {
         case 'renderDocument':
+          this.currentBuffer = message.buffer;
           await this.handleRenderDocument(
             message.fileName,
             message.fileExt,
@@ -89,6 +142,10 @@ class WebviewApp {
           break;
         case 'themeChanged':
           this.themeManager.setVsCodeTheme(message.theme as VsCodeThemeKind);
+          if (this.currentExt === 'docx' && this.documentContent) {
+            const isDark = this.themeManager.getEffectiveTheme() !== 'light';
+            adjustDocxColorsForTheme(this.documentContent, isDark);
+          }
           break;
         case 'showError':
           this.showError(message.message);
@@ -125,6 +182,7 @@ class WebviewApp {
 
     // Apply Theme
     this.themeManager.setVsCodeTheme(themeKind);
+    const isDark = this.themeManager.getEffectiveTheme() !== 'light';
 
     try {
       if (!this.documentContent) {
@@ -133,18 +191,29 @@ class WebviewApp {
 
       this.resetZoom();
 
+      // Configure Delimiter Dropdown Visibility
+      if (['csv', 'tsv'].includes(this.currentExt)) {
+        this.delimiterContainer?.classList.remove('hidden');
+      } else {
+        this.delimiterContainer?.classList.add('hidden');
+      }
+
       // Route by file extension
       if (this.currentExt === 'docx') {
         this.zoomControls?.classList.remove('hidden');
-        await renderDocx(buffer, this.documentContent);
+        if (this.statusStatsEl) this.statusStatsEl.textContent = 'Word Dokümanı';
+        if (this.statusSelectionEl) this.statusSelectionEl.textContent = 'Hazır';
+        await renderDocx(buffer, this.documentContent, isDark);
       } else if (['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
-        // Zoom is not needed for virtual tables (table has its own scrolling)
         this.zoomControls?.classList.add('hidden');
         if (this.excelViewer) {
-          this.excelViewer.render(buffer);
+          const isCsv = ['csv', 'tsv'].includes(this.currentExt);
+          this.excelViewer.render(buffer, isCsv);
         }
       } else if (this.currentExt === 'doc') {
         this.zoomControls?.classList.add('hidden');
+        if (this.statusStatsEl) this.statusStatsEl.textContent = 'Word 97-2003 (.doc)';
+        if (this.statusSelectionEl) this.statusSelectionEl.textContent = 'Salt Okunur Metin Modu';
         renderLegacyDoc(buffer, this.documentContent, fileName);
       } else {
         throw new Error(`Desteklenmeyen dosya uzantısı: .${this.currentExt}`);
@@ -156,6 +225,67 @@ class WebviewApp {
       this.showError(`Görüntüleme hatası: ${err?.message || String(err)}`);
       this.hideLoading();
     }
+  }
+
+  private handleCopyMarkdown() {
+    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+      const md = this.excelViewer.exportAsMarkdown();
+      if (md) {
+        this.vscode.postMessage({
+          command: 'copyToClipboard',
+          text: md,
+          infoMessage: 'Excel tablosu panoya Markdown olarak kopyalandı! 📋',
+        });
+      }
+    } else if (this.currentExt === 'docx' && this.documentContent) {
+      // In Word, if there is a table, export the first table as Markdown
+      const table = this.documentContent.querySelector('table');
+      if (table) {
+        const md = this.convertHtmlTableToMarkdown(table);
+        this.vscode.postMessage({
+          command: 'copyToClipboard',
+          text: md,
+          infoMessage: 'Word tablosu panoya Markdown olarak kopyalandı! 📋',
+        });
+      } else {
+        this.vscode.postMessage({
+          command: 'showInfoMessage',
+          text: 'Dokümanda kopyalanacak bir tablo bulunamadı.',
+        });
+      }
+    }
+  }
+
+  private handleCopyJson() {
+    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+      const json = this.excelViewer.exportAsJson();
+      if (json && json !== '[]') {
+        this.vscode.postMessage({
+          command: 'copyToClipboard',
+          text: json,
+          infoMessage: 'Veriler JSON dizisi olarak panoya kopyalandı! 📋',
+        });
+      }
+    }
+  }
+
+  private convertHtmlTableToMarkdown(table: HTMLTableElement): string {
+    const rows = Array.from(table.querySelectorAll('tr'));
+    if (rows.length === 0) return '';
+
+    const lines: string[] = [];
+    const headerCells = Array.from(rows[0].querySelectorAll('th, td'));
+    const headers = headerCells.map((c) => (c.textContent || '').replace(/\|/g, '\\|').trim());
+    lines.push(`| ${headers.join(' | ')} |`);
+    lines.push(`| ${headers.map(() => '---').join(' | ')} |`);
+
+    for (let i = 1; i < rows.length; i++) {
+      const cells = Array.from(rows[i].querySelectorAll('td'));
+      const values = cells.map((c) => (c.textContent || '').replace(/\|/g, '\\|').trim());
+      lines.push(`| ${values.join(' | ')} |`);
+    }
+
+    return lines.join('\n');
   }
 
   private adjustZoom(delta: number) {
@@ -192,7 +322,6 @@ class WebviewApp {
         this.searchCountEl.textContent = `${count} eşleşme`;
       }
     } else {
-      // In Word/Docx, window.find can be used or mark matches
       const win = window as any;
       if (typeof win.find === 'function') {
         const found = win.find(query, false, false, true, false, true, false);
