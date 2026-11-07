@@ -73,3 +73,4 @@ export class OutlineManager {
     this.btnToggleOutline?.classList.remove('active');
   }
 }
+

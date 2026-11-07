@@ -27,20 +27,31 @@ export class ExcelViewer {
   private selectStart: { r: number; c: number } | null = null;
   private selectedCells: HTMLElement[] = [];
 
+  // Active filters by column index: colIndex -> Set of allowed values
+  private activeFilters: Map<number, Set<string>> = new Map();
+  private filterPopup: HTMLElement | null = null;
+
   constructor(container: HTMLElement, callbacks: ExcelRenderCallbacks = {}) {
     this.container = container;
     this.callbacks = callbacks;
     this.sheetSelect = document.getElementById('sheet-select') as HTMLSelectElement | null;
 
-    // Listen to mouseup on window to end range selection
+    // Global listeners
     window.addEventListener('mouseup', () => {
       this.isSelecting = false;
+    });
+
+    document.addEventListener('click', (e) => {
+      if (this.filterPopup && !this.filterPopup.contains(e.target as Node)) {
+        this.closeFilterPopup();
+      }
     });
   }
 
   public render(buffer: ArrayBuffer, isCsv: boolean = false, customDelimiter?: string) {
     this.rawBuffer = buffer;
     this.isCsv = isCsv;
+    this.activeFilters.clear();
 
     if (isCsv) {
       const decoder = new TextDecoder('utf-8');
@@ -90,6 +101,7 @@ export class ExcelViewer {
 
   public reparseCsvWithDelimiter(delimiter: string) {
     if (!this.isCsv || !this.rawCsvText) return;
+    this.activeFilters.clear();
     const finalDelim = delimiter === 'auto' ? this.detectDelimiter(this.rawCsvText) : delimiter;
     this.workbook = XLSX.read(this.rawCsvText, {
       type: 'string',
@@ -131,7 +143,6 @@ export class ExcelViewer {
       this.sheetSelect.innerHTML = '';
       const sheetContainer = document.getElementById('sheet-selector-container');
       if (sheetContainer) {
-        // Hide sheet selector if single CSV or single sheet
         if (this.workbook.SheetNames.length > 1) {
           sheetContainer.classList.remove('hidden');
         } else {
@@ -141,7 +152,6 @@ export class ExcelViewer {
     }
 
     this.tabsBar.innerHTML = '';
-    // Hide bottom tabs if only 1 sheet (e.g. CSV)
     if (this.workbook.SheetNames.length <= 1) {
       this.tabsBar.style.display = 'none';
     } else {
@@ -180,6 +190,7 @@ export class ExcelViewer {
     this.sortColumnIndex = null;
     this.sortAscending = true;
     this.selectedCells = [];
+    this.activeFilters.clear();
 
     if (this.sheetSelect && this.sheetSelect.value !== sheetName) {
       this.sheetSelect.value = sheetName;
@@ -237,12 +248,40 @@ export class ExcelViewer {
     for (let c = startCol; c <= endCol; c++) {
       const th = document.createElement('th');
       th.className = 'col-header';
+      th.dataset.c = String(c);
       const colLetter = XLSX.utils.encode_col(c);
-      th.textContent = colLetter;
-      th.title = `Sütun ${colLetter} (Sıralamak için tıklayın)`;
-      th.addEventListener('click', () => {
+
+      const content = document.createElement('div');
+      content.className = 'col-header-content';
+
+      const label = document.createElement('span');
+      label.textContent = colLetter;
+      label.title = `Sütun ${colLetter} (Sıralamak için tıklayın)`;
+      label.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.sortTableByColumn(c);
       });
+      content.appendChild(label);
+
+      // Filter Button
+      const filterBtn = document.createElement('span');
+      filterBtn.className = 'col-filter-btn';
+      filterBtn.textContent = '▼';
+      filterBtn.title = `${colLetter} Sütununu Filtrele`;
+      filterBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openFilterPopup(c, filterBtn);
+      });
+      content.appendChild(filterBtn);
+
+      th.appendChild(content);
+
+      // Resizer Handle
+      const resizer = document.createElement('div');
+      resizer.className = 'col-resizer';
+      this.initColumnResizer(resizer, th, c);
+      th.appendChild(resizer);
+
       headerRow.appendChild(th);
     }
     thead.appendChild(headerRow);
@@ -254,6 +293,7 @@ export class ExcelViewer {
 
     for (let r = startRow; r < startRow + rowsToRender; r++) {
       const tr = document.createElement('tr');
+      tr.dataset.r = String(r);
 
       const rowHeader = document.createElement('td');
       rowHeader.className = 'row-header';
@@ -282,9 +322,9 @@ export class ExcelViewer {
           td.textContent = '';
         }
 
-        // Multi-cell drag & click selection listeners
+        // Multi-cell selection
         td.addEventListener('mousedown', (e) => {
-          if (e.button !== 0) return; // Only left click
+          if (e.button !== 0) return;
           this.isSelecting = true;
           this.selectStart = { r, c };
           this.selectRange(r, c, r, c);
@@ -328,10 +368,181 @@ export class ExcelViewer {
     }
   }
 
+  private initColumnResizer(resizer: HTMLElement, th: HTMLElement, colIndex: number) {
+    let startX = 0;
+    let startWidth = 0;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const diff = e.clientX - startX;
+      const newWidth = Math.max(45, startWidth + diff);
+      th.style.width = `${newWidth}px`;
+      th.style.minWidth = `${newWidth}px`;
+      th.style.maxWidth = `${newWidth}px`;
+
+      // Update all cells in this column
+      const colCells = this.tableContainer?.querySelectorAll(`td[data-c="${colIndex}"]`);
+      colCells?.forEach((cell) => {
+        const el = cell as HTMLElement;
+        el.style.width = `${newWidth}px`;
+        el.style.minWidth = `${newWidth}px`;
+        el.style.maxWidth = `${newWidth}px`;
+      });
+    };
+
+    const onMouseUp = () => {
+      resizer.classList.remove('resizing');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    resizer.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      startX = e.clientX;
+      startWidth = th.offsetWidth;
+      resizer.classList.add('resizing');
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+
+  private openFilterPopup(colIndex: number, btnEl: HTMLElement) {
+    this.closeFilterPopup();
+
+    const rect = btnEl.getBoundingClientRect();
+    const popup = document.createElement('div');
+    popup.className = 'column-filter-popup';
+    popup.style.top = `${rect.bottom + 4}px`;
+    popup.style.left = `${Math.min(window.innerWidth - 240, rect.left)}px`;
+
+    // Collect unique values in column
+    const cells = this.tableContainer?.querySelectorAll(`td[data-c="${colIndex}"]`);
+    const valuesSet = new Set<string>();
+    cells?.forEach((c) => {
+      valuesSet.add(c.textContent?.trim() || '(Boş)');
+    });
+    const uniqueValues = Array.from(valuesSet).sort();
+
+    // Search inside filter
+    const searchInput = document.createElement('input');
+    searchInput.className = 'filter-search-input';
+    searchInput.placeholder = 'Değerlerde ara...';
+    popup.appendChild(searchInput);
+
+    // List container
+    const list = document.createElement('div');
+    list.className = 'filter-values-list';
+
+    const selectedSet = this.activeFilters.get(colIndex) || new Set(uniqueValues);
+    const checkboxes: Map<string, HTMLInputElement> = new Map();
+
+    const renderListItems = (filterText: string = '') => {
+      list.innerHTML = '';
+      uniqueValues.forEach((val) => {
+        if (filterText && !val.toLowerCase().includes(filterText.toLowerCase())) return;
+
+        const item = document.createElement('label');
+        item.className = 'filter-value-item';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = selectedSet.has(val);
+        checkboxes.set(val, cb);
+
+        const span = document.createElement('span');
+        span.textContent = val;
+
+        item.appendChild(cb);
+        item.appendChild(span);
+        list.appendChild(item);
+      });
+    };
+
+    renderListItems();
+    searchInput.addEventListener('input', () => {
+      renderListItems(searchInput.value);
+    });
+
+    popup.appendChild(list);
+
+    // Action buttons
+    const actions = document.createElement('div');
+    actions.className = 'filter-actions';
+
+    const btnClear = document.createElement('button');
+    btnClear.className = 'toolbar-btn text-btn';
+    btnClear.textContent = 'Sıfırla';
+    btnClear.onclick = () => {
+      this.activeFilters.delete(colIndex);
+      btnEl.classList.remove('active');
+      this.applyActiveFilters();
+      this.closeFilterPopup();
+    };
+
+    const btnApply = document.createElement('button');
+    btnApply.className = 'toolbar-btn text-btn';
+    btnApply.textContent = 'Uygula';
+    btnApply.onclick = () => {
+      const newAllowed = new Set<string>();
+      checkboxes.forEach((cb, val) => {
+        if (cb.checked) newAllowed.add(val);
+      });
+      if (newAllowed.size < uniqueValues.length) {
+        this.activeFilters.set(colIndex, newAllowed);
+        btnEl.classList.add('active');
+      } else {
+        this.activeFilters.delete(colIndex);
+        btnEl.classList.remove('active');
+      }
+      this.applyActiveFilters();
+      this.closeFilterPopup();
+    };
+
+    actions.appendChild(btnClear);
+    actions.appendChild(btnApply);
+    popup.appendChild(actions);
+
+    document.body.appendChild(popup);
+    this.filterPopup = popup;
+  }
+
+  private closeFilterPopup() {
+    if (this.filterPopup) {
+      this.filterPopup.remove();
+      this.filterPopup = null;
+    }
+  }
+
+  private applyActiveFilters() {
+    const tbody = this.tableContainer?.querySelector('tbody');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    let visibleCount = 0;
+
+    rows.forEach((row) => {
+      let isVisible = true;
+
+      this.activeFilters.forEach((allowedVals, colIdx) => {
+        const cell = row.querySelector(`td[data-c="${colIdx}"]`);
+        const cellVal = cell?.textContent?.trim() || '(Boş)';
+        if (!allowedVals.has(cellVal)) {
+          isVisible = false;
+        }
+      });
+
+      row.style.display = isVisible ? '' : 'none';
+      if (isVisible) visibleCount++;
+    });
+
+    this.callbacks.onStatsUpdated?.(
+      `Filtrelendi: ${visibleCount} / ${rows.length} satır | Sayfa: ${this.currentSheetName}`
+    );
+  }
+
   private selectRange(minR: number, minC: number, maxR: number, maxC: number) {
     if (!this.tableContainer) return;
 
-    // Clear previous selection
     this.selectedCells.forEach((el) => el.classList.remove('selected'));
     this.selectedCells = [];
 
@@ -363,7 +574,6 @@ export class ExcelViewer {
       this.callbacks.onCellSelected?.(addr, val);
     }
 
-    // Calculate quick stats
     if (numbers.length > 0) {
       const sum = numbers.reduce((a, b) => a + b, 0);
       const avg = sum / numbers.length;
@@ -433,6 +643,8 @@ export class ExcelViewer {
   ) {
     for (let r = fromRow; r <= toRow; r++) {
       const tr = document.createElement('tr');
+      tr.dataset.r = String(r);
+
       const rowHeader = document.createElement('td');
       rowHeader.className = 'row-header';
       rowHeader.textContent = String(r + 1);
@@ -483,15 +695,11 @@ export class ExcelViewer {
     }
   }
 
-  /**
-   * Export currently loaded sheet or selected cells as a Markdown formatted table
-   */
   public exportAsMarkdown(): string {
     if (!this.workbook || !this.currentSheetName) return '';
     const sheet = this.workbook.Sheets[this.currentSheetName];
     if (!sheet || !sheet['!ref']) return '';
 
-    // If cells are selected, extract bounds
     let startRow: number, endRow: number, startCol: number, endCol: number;
 
     if (this.selectedCells.length > 1) {
@@ -504,14 +712,12 @@ export class ExcelViewer {
     } else {
       const range = XLSX.utils.decode_range(sheet['!ref']);
       startRow = range.s.r;
-      endRow = Math.min(range.e.r, startRow + 500); // safety cap
+      endRow = Math.min(range.e.r, startRow + 500);
       startCol = range.s.c;
       endCol = range.e.c;
     }
 
     const rowsLines: string[] = [];
-
-    // Header row
     const headers: string[] = [];
     const separators: string[] = [];
 
@@ -525,7 +731,6 @@ export class ExcelViewer {
     rowsLines.push(`| ${headers.join(' | ')} |`);
     rowsLines.push(`| ${separators.join(' | ')} |`);
 
-    // Data rows
     for (let r = startRow + 1; r <= endRow; r++) {
       const rowCells: string[] = [];
       for (let c = startCol; c <= endCol; c++) {
@@ -540,9 +745,6 @@ export class ExcelViewer {
     return rowsLines.join('\n');
   }
 
-  /**
-   * Export currently loaded sheet or selected cells as a JSON array of objects
-   */
   public exportAsJson(): string {
     if (!this.workbook || !this.currentSheetName) return '[]';
     const sheet = this.workbook.Sheets[this.currentSheetName];

@@ -93,3 +93,4 @@ export function renderRtf(buffer: ArrayBuffer, container: HTMLElement): void {
   wrapper.appendChild(pre);
   container.appendChild(wrapper);
 }
+

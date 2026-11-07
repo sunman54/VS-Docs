@@ -22,3 +22,4 @@ export async function extractImagesFromDocx(buffer: ArrayBuffer): Promise<Extrac
 
   return images;
 }
+
