@@ -4,4 +4,6 @@ test/**
 .gitignore
 tsconfig.json
 esbuild.js
+build.bat
 *.vsix
+
