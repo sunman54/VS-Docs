@@ -5,7 +5,7 @@ const path = require('path');
 const JSZip = require('jszip');
 
 async function runTests() {
-  console.log('=== Universal Document Viewer Test Suite Başlatılıyor ===\n');
+  console.log('=== VS Docs Test Suite Başlatılıyor ===\n');
 
   // 1. Test Excel Creation & Parsing (xlsx, xls, csv)
   console.log('[TEST 1] Excel Workbook ve CSV Ayrıştırma Testi...');

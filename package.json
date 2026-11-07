@@ -1,22 +1,23 @@
 {
-  "name": "vcdocs-viewer",
-  "displayName": "Universal Document Viewer (Word, Excel, PDF)",
+  "name": "vs-docs",
+  "displayName": "VS Docs",
   "description": "Read-only viewer for Word (.docx, .doc), Excel (.xlsx, .xls, .csv, .ods), PDF (.pdf), ODT (.odt), RTF (.rtf) with adaptive Dark Mode in VS Code",
   "version": "1.0.0",
   "publisher": "vcdocs",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vcdocs/vcdocs-viewer"
+    "url": "https://github.com/vcdocs/vs-docs"
   },
   "keywords": [
+    "vs-docs",
+    "office",
     "word",
     "excel",
     "docx",
     "xlsx",
     "pdf",
     "viewer",
-    "office",
     "dark-mode",
     "csv"
   ],
@@ -35,7 +36,7 @@
     "customEditors": [
       {
         "viewType": "vcdocs.docViewer",
-        "displayName": "Universal Document Viewer",
+        "displayName": "VS Docs",
         "selector": [
           {
             "filenamePattern": "*.docx"
@@ -77,7 +78,7 @@
     "commands": [
       {
         "command": "vcdocs.openViewer",
-        "title": "Open with Universal Document Viewer"
+        "title": "Open with VS Docs"
       }
     ]
   },

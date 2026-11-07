@@ -168,7 +168,7 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
   ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="${styleUri}">
-  <title>Universal Document Viewer</title>
+  <title>VS Docs</title>
 </head>
 <body class="loading">
   <!-- Toolbar -->

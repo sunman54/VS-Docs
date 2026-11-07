@@ -2,7 +2,7 @@
 setlocal
 
 echo ========================================================
-echo   Universal Document Viewer - Production Build Script
+echo   VS Docs - Production Build Script
 echo ========================================================
 echo.
 

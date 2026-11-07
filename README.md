@@ -1,4 +1,4 @@
-# Universal Document Viewer (VS Code Extension)
+# VS Docs (VS Code Extension)
 
 VS Code üzerinde çalışan; **Word (`.docx`, `.doc`)**, **Excel (`.xlsx`, `.xls`, `.xlsm`, `.csv`, `.tsv`, `.ods`)**, **PDF (`.pdf`)**, **OpenDocument (`.odt`)** ve **Zengin Metin (`.rtf`)** dosyalarını harici bir ofis yazılımına ihtiyaç duymadan **salt okunur (read-only)** olarak açan, yüksek performanslı ve **Koyu Tema (Dark Mode)** uyumlu kapsamlı doküman görüntüleyici eklentisi.
 
