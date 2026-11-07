@@ -101,6 +101,9 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
           await vscode.env.clipboard.writeText(msg.text);
           vscode.window.showInformationMessage(msg.infoMessage || 'Panoya kopyalandı!');
           break;
+        case 'exportImages':
+          await this.saveExtractedImages(document.uri, msg.images);
+          break;
         case 'showErrorMessage':
           vscode.window.showErrorMessage(msg.text);
           break;
@@ -114,6 +117,34 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
       themeChangeDisposable.dispose();
       messageDisposable.dispose();
     });
+  }
+
+  private async saveExtractedImages(docUri: vscode.Uri, images: Array<{ name: string; base64: string }>): Promise<void> {
+    if (!images || images.length === 0) {
+      vscode.window.showInformationMessage('Dokümanda dışa aktarılacak görsel bulunamadı.');
+      return;
+    }
+
+    try {
+      const docDir = path.dirname(docUri.fsPath);
+      const docName = path.basename(docUri.fsPath, path.extname(docUri.fsPath));
+      const targetDir = path.join(docDir, `${docName}_gorseller`);
+      const targetUri = vscode.Uri.file(targetDir);
+
+      await vscode.workspace.fs.createDirectory(targetUri);
+
+      for (const img of images) {
+        const fileUri = vscode.Uri.file(path.join(targetDir, img.name));
+        const buffer = Buffer.from(img.base64, 'base64');
+        await vscode.workspace.fs.writeFile(fileUri, buffer);
+      }
+
+      vscode.window.showInformationMessage(
+        `${images.length} adet görsel başarıyla kaydedildi:\n${targetDir}`
+      );
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Görseller kaydedilemedi: ${err?.message || String(err)}`);
+    }
   }
 
   private getHtmlForWebview(webview: vscode.Webview): string {
@@ -145,6 +176,10 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
     <div class="toolbar-left">
       <span id="doc-title" class="doc-title" title="Doküman">Yükleniyor...</span>
       <span id="doc-badge" class="doc-badge">DOC</span>
+      <button id="btn-toggle-outline" class="toolbar-btn text-btn hidden" title="İçindekiler / Başlık Ağacı">
+        <span>📑</span>
+        <span>İçindekiler</span>
+      </button>
     </div>
 
     <div class="toolbar-center">
@@ -192,6 +227,10 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
           <span>{ }</span>
           <span>JSON</span>
         </button>
+        <button id="btn-export-images" class="toolbar-btn text-btn hidden" title="Dokümandaki gömülü resimleri dışa aktar">
+          <span>🖼️</span>
+          <span>Görseller</span>
+        </button>
       </div>
 
       <!-- Print Button -->
@@ -220,10 +259,21 @@ export class DocViewerCustomEditorProvider implements vscode.CustomReadonlyEdito
     <p id="loading-text">Doküman hazırlanıyor...</p>
   </div>
 
-  <!-- Main Viewer Content -->
-  <main id="viewer-container" class="viewer-container">
-    <div id="document-content" class="document-content"></div>
-  </main>
+  <!-- Main Content Layout (Sidebar + Viewer) -->
+  <div class="app-body-layout">
+    <aside id="outline-sidebar" class="outline-sidebar hidden">
+      <div class="outline-header">
+        <span>İçindekiler</span>
+        <button id="btn-close-outline" class="close-outline-btn">✕</button>
+      </div>
+      <div class="outline-list"></div>
+    </aside>
+
+    <!-- Main Viewer Content -->
+    <main id="viewer-container" class="viewer-container">
+      <div id="document-content" class="document-content"></div>
+    </main>
+  </div>
 
   <!-- Bottom Status Bar -->
   <footer id="doc-status-bar" class="doc-status-bar">

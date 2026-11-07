@@ -2,6 +2,10 @@ import { ThemeManager, VsCodeThemeKind } from './themeManager';
 import { renderDocx, adjustDocxColorsForTheme } from './renderers/docxRenderer';
 import { ExcelViewer } from './renderers/excelRenderer';
 import { renderLegacyDoc } from './renderers/legacyDocRenderer';
+import { PdfViewer } from './renderers/pdfRenderer';
+import { renderOdt, renderRtf } from './renderers/odtRenderer';
+import { OutlineManager } from './outlineManager';
+import { extractImagesFromDocx } from './imageExporter';
 
 declare function acquireVsCodeApi(): {
   postMessage: (msg: any) => void;
@@ -13,6 +17,8 @@ class WebviewApp {
   private vscode = acquireVsCodeApi();
   private themeManager: ThemeManager;
   private excelViewer: ExcelViewer | null = null;
+  private pdfViewer: PdfViewer | null = null;
+  private outlineManager: OutlineManager | null = null;
 
   // DOM Elements
   private docTitleEl = document.getElementById('doc-title');
@@ -47,11 +53,14 @@ class WebviewApp {
   // Export & Action elements
   private btnCopyMd = document.getElementById('btn-copy-md');
   private btnCopyJson = document.getElementById('btn-copy-json');
+  private btnExportImages = document.getElementById('btn-export-images');
   private btnPrint = document.getElementById('btn-print');
+  private btnCloseOutline = document.getElementById('btn-close-outline');
 
   // Current doc state
   private currentExt = '';
   private currentBuffer: ArrayBuffer | null = null;
+  private currentFileName = '';
 
   constructor() {
     this.themeManager = new ThemeManager();
@@ -74,6 +83,16 @@ class WebviewApp {
           }
         },
       });
+
+      this.pdfViewer = new PdfViewer(this.documentContent, {
+        onPageCount: (total) => {
+          if (this.statusStatsEl) {
+            this.statusStatsEl.textContent = `Toplam ${total} sayfa`;
+          }
+        },
+      });
+
+      this.outlineManager = new OutlineManager(this.documentContent);
     }
 
     this.initEventListeners();
@@ -87,6 +106,11 @@ class WebviewApp {
     // Error banner close
     this.btnCloseError?.addEventListener('click', () => {
       this.errorBanner?.classList.add('hidden');
+    });
+
+    // Outline close
+    this.btnCloseOutline?.addEventListener('click', () => {
+      this.outlineManager?.close();
     });
 
     // Zoom controls
@@ -107,6 +131,11 @@ class WebviewApp {
     // Copy as JSON
     this.btnCopyJson?.addEventListener('click', () => {
       this.handleCopyJson();
+    });
+
+    // Export Images from Word
+    this.btnExportImages?.addEventListener('click', async () => {
+      await this.handleExportImages();
     });
 
     // CSV Delimiter change
@@ -133,6 +162,7 @@ class WebviewApp {
       switch (message.command) {
         case 'renderDocument':
           this.currentBuffer = message.buffer;
+          this.currentFileName = message.fileName;
           await this.handleRenderDocument(
             message.fileName,
             message.fileExt,
@@ -142,9 +172,12 @@ class WebviewApp {
           break;
         case 'themeChanged':
           this.themeManager.setVsCodeTheme(message.theme as VsCodeThemeKind);
+          const isDark = this.themeManager.getEffectiveTheme() !== 'light';
+
           if (this.currentExt === 'docx' && this.documentContent) {
-            const isDark = this.themeManager.getEffectiveTheme() !== 'light';
             adjustDocxColorsForTheme(this.documentContent, isDark);
+          } else if (this.currentExt === 'pdf' && this.pdfViewer) {
+            this.pdfViewer.setDarkMode(isDark);
           }
           break;
         case 'showError':
@@ -175,8 +208,12 @@ class WebviewApp {
       this.docBadgeEl.className = 'doc-badge';
       if (['docx', 'doc'].includes(this.currentExt)) {
         this.docBadgeEl.classList.add(this.currentExt === 'doc' ? 'legacy' : 'word');
-      } else if (['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+      } else if (['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'ods'].includes(this.currentExt)) {
         this.docBadgeEl.classList.add('excel');
+      } else if (this.currentExt === 'pdf') {
+        this.docBadgeEl.classList.add('pdf');
+      } else if (['odt', 'rtf'].includes(this.currentExt)) {
+        this.docBadgeEl.classList.add('odt');
       }
     }
 
@@ -190,6 +227,8 @@ class WebviewApp {
       }
 
       this.resetZoom();
+      this.btnExportImages?.classList.add('hidden');
+      this.outlineManager?.close();
 
       // Configure Delimiter Dropdown Visibility
       if (['csv', 'tsv'].includes(this.currentExt)) {
@@ -203,13 +242,43 @@ class WebviewApp {
         this.zoomControls?.classList.remove('hidden');
         if (this.statusStatsEl) this.statusStatsEl.textContent = 'Word Dokümanı';
         if (this.statusSelectionEl) this.statusSelectionEl.textContent = 'Hazır';
+
         await renderDocx(buffer, this.documentContent, isDark);
-      } else if (['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+
+        // Update Outline Headings & Image button
+        const headingsCount = this.outlineManager?.updateHeadings() || 0;
+        if (headingsCount > 0 && this.statusStatsEl) {
+          this.statusStatsEl.textContent = `Word Dokümanı (${headingsCount} başlık)`;
+        }
+
+        // Check if docx has images
+        extractImagesFromDocx(buffer).then((images) => {
+          if (images.length > 0) {
+            this.btnExportImages?.classList.remove('hidden');
+            if (this.btnExportImages) {
+              this.btnExportImages.title = `Dokümandaki ${images.length} görseli dışa aktar`;
+            }
+          }
+        }).catch(() => {});
+
+      } else if (this.currentExt === 'pdf') {
+        this.zoomControls?.classList.remove('hidden');
+        if (this.pdfViewer) {
+          await this.pdfViewer.render(buffer, isDark);
+        }
+      } else if (['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'ods'].includes(this.currentExt)) {
         this.zoomControls?.classList.add('hidden');
         if (this.excelViewer) {
           const isCsv = ['csv', 'tsv'].includes(this.currentExt);
           this.excelViewer.render(buffer, isCsv);
         }
+      } else if (this.currentExt === 'odt') {
+        this.zoomControls?.classList.remove('hidden');
+        await renderOdt(buffer, this.documentContent);
+        this.outlineManager?.updateHeadings();
+      } else if (this.currentExt === 'rtf') {
+        this.zoomControls?.classList.add('hidden');
+        renderRtf(buffer, this.documentContent);
       } else if (this.currentExt === 'doc') {
         this.zoomControls?.classList.add('hidden');
         if (this.statusStatsEl) this.statusStatsEl.textContent = 'Word 97-2003 (.doc)';
@@ -227,8 +296,33 @@ class WebviewApp {
     }
   }
 
+  private async handleExportImages() {
+    if (!this.currentBuffer || this.currentExt !== 'docx') return;
+    try {
+      this.showLoading('Görseller ayıklanıyor...');
+      const images = await extractImagesFromDocx(this.currentBuffer);
+      this.hideLoading();
+
+      if (images.length === 0) {
+        this.vscode.postMessage({
+          command: 'showInfoMessage',
+          text: 'Bu dokümanda dışa aktarılacak görsel bulunamadı.',
+        });
+        return;
+      }
+
+      this.vscode.postMessage({
+        command: 'exportImages',
+        images: images,
+      });
+    } catch (err: any) {
+      this.hideLoading();
+      this.showError(`Görsel ayıklama hatası: ${err?.message || String(err)}`);
+    }
+  }
+
   private handleCopyMarkdown() {
-    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'ods'].includes(this.currentExt)) {
       const md = this.excelViewer.exportAsMarkdown();
       if (md) {
         this.vscode.postMessage({
@@ -238,7 +332,6 @@ class WebviewApp {
         });
       }
     } else if (this.currentExt === 'docx' && this.documentContent) {
-      // In Word, if there is a table, export the first table as Markdown
       const table = this.documentContent.querySelector('table');
       if (table) {
         const md = this.convertHtmlTableToMarkdown(table);
@@ -257,7 +350,7 @@ class WebviewApp {
   }
 
   private handleCopyJson() {
-    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'ods'].includes(this.currentExt)) {
       const json = this.excelViewer.exportAsJson();
       if (json && json !== '[]') {
         this.vscode.postMessage({
@@ -310,13 +403,13 @@ class WebviewApp {
   private performSearch(query: string) {
     if (!query.trim()) {
       if (this.searchCountEl) this.searchCountEl.textContent = '';
-      if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+      if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'ods'].includes(this.currentExt)) {
         this.excelViewer.filterCells('');
       }
       return;
     }
 
-    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv'].includes(this.currentExt)) {
+    if (this.excelViewer && ['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'ods'].includes(this.currentExt)) {
       const count = this.excelViewer.filterCells(query);
       if (this.searchCountEl) {
         this.searchCountEl.textContent = `${count} eşleşme`;

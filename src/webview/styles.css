@@ -77,6 +77,14 @@ body {
   background-color: #217346; /* Excel Green */
 }
 
+.doc-badge.pdf {
+  background-color: #d9381e; /* PDF Red */
+}
+
+.doc-badge.odt {
+  background-color: #0088cc; /* ODT Teal */
+}
+
 .doc-badge.legacy {
   background-color: #d83b01; /* Amber/Orange */
 }
@@ -209,6 +217,105 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ------------------- Main Body Layout & Outline ------------------- */
+.app-body-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.outline-sidebar {
+  width: 240px;
+  background-color: var(--toolbar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 40;
+}
+
+.outline-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.close-outline-btn {
+  background: transparent;
+  border: none;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.outline-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.outline-item {
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid transparent;
+  color: var(--vscode-foreground);
+  transition: all 0.1s ease;
+}
+
+.outline-item:hover {
+  background-color: var(--vscode-list-hoverBackground);
+  border-left-color: var(--badge-bg);
+}
+
+.outline-item.level-1 { font-weight: 600; padding-left: 14px; }
+.outline-item.level-2 { padding-left: 26px; opacity: 0.9; }
+.outline-item.level-3 { padding-left: 38px; opacity: 0.8; font-size: 11px; }
+.outline-item.level-4 { padding-left: 50px; opacity: 0.7; font-size: 11px; }
+
+.heading-target-highlight {
+  animation: flashHighlight 1.5s ease;
+}
+
+@keyframes flashHighlight {
+  0% { background-color: rgba(234, 92, 0, 0.4); }
+  100% { background-color: transparent; }
+}
+
+/* ------------------- PDF Rendering ------------------- */
+.pdf-document-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 40px;
+  transition: transform 0.15s ease-out;
+}
+
+.pdf-page-container {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+}
+
+.pdf-canvas {
+  display: block;
+}
+
+/* PDF Dark Mode Inversion Filter */
+.pdf-document-wrapper.dark-filter .pdf-canvas {
+  filter: invert(0.88) hue-rotate(180deg);
 }
 
 /* ------------------- Main Viewer Container ------------------- */

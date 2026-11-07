@@ -1,8 +1,8 @@
 {
   "name": "vcdocs-viewer",
-  "displayName": "Universal Document Viewer (Word, Excel)",
-  "description": "Read-only viewer for Word (.docx, .doc), Excel (.xlsx, .xls, .csv) with adaptive Dark Mode in VS Code",
-  "version": "0.2.0",
+  "displayName": "Universal Document Viewer (Word, Excel, PDF)",
+  "description": "Read-only viewer for Word (.docx, .doc), Excel (.xlsx, .xls, .csv, .ods), PDF (.pdf), ODT (.odt), RTF (.rtf) with adaptive Dark Mode in VS Code",
+  "version": "0.3.0",
   "publisher": "vcdocs",
   "engines": {
     "vscode": "^1.85.0"
@@ -21,13 +21,39 @@
         "viewType": "vcdocs.docViewer",
         "displayName": "Universal Document Viewer",
         "selector": [
-          { "filenamePattern": "*.docx" },
-          { "filenamePattern": "*.doc" },
-          { "filenamePattern": "*.xlsx" },
-          { "filenamePattern": "*.xls" },
-          { "filenamePattern": "*.xlsm" },
-          { "filenamePattern": "*.csv" },
-          { "filenamePattern": "*.tsv" }
+          {
+            "filenamePattern": "*.docx"
+          },
+          {
+            "filenamePattern": "*.doc"
+          },
+          {
+            "filenamePattern": "*.xlsx"
+          },
+          {
+            "filenamePattern": "*.xls"
+          },
+          {
+            "filenamePattern": "*.xlsm"
+          },
+          {
+            "filenamePattern": "*.csv"
+          },
+          {
+            "filenamePattern": "*.tsv"
+          },
+          {
+            "filenamePattern": "*.ods"
+          },
+          {
+            "filenamePattern": "*.odt"
+          },
+          {
+            "filenamePattern": "*.pdf"
+          },
+          {
+            "filenamePattern": "*.rtf"
+          }
         ],
         "priority": "option"
       }
@@ -52,6 +78,7 @@
     "docx-preview": "^0.3.1",
     "dompurify": "^3.2.1",
     "esbuild": "^0.24.0",
+    "pdfjs-dist": "^3.11.174",
     "typescript": "^5.6.3",
     "xlsx": "^0.18.5"
   }

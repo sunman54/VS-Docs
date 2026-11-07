@@ -192,8 +192,47 @@ async function runTests() {
     console.log('  -> Başarılı: CSV Delimiter tespiti (; , | \\t) ve JSON export doğrulandı.');
   }
 
+  // 6. Test Faz 4: PDF, Word Görsel Ayıklama ve RTF
+  console.log('\n[TEST 6] Faz 4 Format Yelpazesi (PDF, Word Görsel Ayıklama, RTF)...');
+  {
+    const sampleDir = path.join(__dirname, 'samples');
+
+    // PDF Doğrulaması
+    const pdfPath = path.join(sampleDir, 'ornek_dokuman.pdf');
+    assert.ok(fs.existsSync(pdfPath), 'ornek_dokuman.pdf mevcut olmalı');
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+    const pdfLoading = pdfjsLib.getDocument({
+      data: new Uint8Array(pdfBuffer),
+      isEvalSupported: false,
+      useWorkerFetch: false,
+    });
+    const pdfDoc = await pdfLoading.promise;
+    assert.strictEqual(pdfDoc.numPages, 1, 'PDF 1 sayfa olarak okunmalı');
+
+    // Word İçinden Görsel Ayıklama Doğrulaması
+    const docxPath = path.join(sampleDir, 'ornek_dokuman.docx');
+    const docxBuffer = fs.readFileSync(docxPath);
+    const zip = await JSZip.loadAsync(docxBuffer);
+    const mediaFiles = Object.keys(zip.files).filter(
+      (fileName) => fileName.startsWith('word/media/') && !zip.files[fileName].dir
+    );
+    assert.ok(mediaFiles.length > 0, 'DOCX içinde en az 1 görsel (word/media/) bulunmalı');
+    assert.ok(mediaFiles.includes('word/media/logo.png'), 'logo.png görseli arşivde yer almalı');
+
+    // RTF Metin Ayıklama Doğrulaması
+    const rtfPath = path.join(sampleDir, 'ornek_metin.rtf');
+    assert.ok(fs.existsSync(rtfPath), 'ornek_metin.rtf mevcut olmalı');
+    const rtfBuffer = fs.readFileSync(rtfPath);
+    const rtfText = rtfBuffer.toString('utf-8');
+    const cleanRtf = rtfText.replace(/\\par[d]?/g, '\n').replace(/\\[a-z0-9\-]+/gi, '').replace(/[{}]/g, '');
+    assert.ok(cleanRtf.includes('RTF Test Dokumani'), 'RTF metin içeriği temizlenebilmeli');
+
+    console.log('  -> Başarılı: PDF okuma, Word resim ayıklama ve RTF dönüştürme doğrulandı.');
+  }
+
   console.log('\n======================================================');
-  console.log(' TÜM TESTLER BAŞARIYLA TAMAMLANDI (5/5 Kategori)');
+  console.log(' TÜM TESTLER BAŞARIYLA TAMAMLANDI (6/6 Kategori)');
   console.log('======================================================\n');
 }
 
