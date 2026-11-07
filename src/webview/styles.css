@@ -1,0 +1,550 @@
+/* VS Code Document Viewer Master Styles */
+:root {
+  --primary-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono-font: "SF Mono", Monaco, Menlo, Consolas, "Ubuntu Mono", monospace;
+  --bg-color: var(--vscode-editor-background, #1e1e1e);
+  --fg-color: var(--vscode-editor-foreground, #d4d4d4);
+  --border-color: var(--vscode-panel-border, #333333);
+  --toolbar-bg: var(--vscode-editorGroupHeader-tabsBackground, #252526);
+  --card-bg: var(--vscode-editorWidget-background, #2d2d2d);
+  --badge-bg: var(--vscode-badge-background, #007acc);
+  --badge-fg: var(--vscode-badge-foreground, #ffffff);
+  --highlight-bg: var(--vscode-editor-findMatchHighlightBackground, #ea5c0055);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--primary-font);
+  background-color: var(--bg-color);
+  color: var(--fg-color);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  user-select: text;
+}
+
+/* ------------------- Toolbar ------------------- */
+.app-toolbar {
+  height: 42px;
+  background-color: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  gap: 12px;
+  font-size: 13px;
+  z-index: 100;
+}
+
+.toolbar-left, .toolbar-center, .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-title {
+  font-weight: 600;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: var(--badge-bg);
+  color: var(--badge-fg);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.doc-badge.word {
+  background-color: #2b579a; /* Word Blue */
+}
+
+.doc-badge.excel {
+  background-color: #217346; /* Excel Green */
+}
+
+.doc-badge.legacy {
+  background-color: #d83b01; /* Amber/Orange */
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-label {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #888888);
+}
+
+.toolbar-btn {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-secondaryForeground, #ffffff);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: background-color 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  background: var(--vscode-button-secondaryHoverBackground, #45494e);
+}
+
+.toolbar-btn.text-btn {
+  padding: 0 10px;
+}
+
+.zoom-level {
+  font-size: 12px;
+  min-width: 44px;
+  text-align: center;
+  font-family: var(--mono-font);
+}
+
+.toolbar-select {
+  background: var(--vscode-dropdown-background, #3c3c3c);
+  color: var(--vscode-dropdown-foreground, #f0f0f0);
+  border: 1px solid var(--vscode-dropdown-border, #555555);
+  border-radius: 4px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 12px;
+  cursor: pointer;
+  max-width: 160px;
+}
+
+.search-group {
+  position: relative;
+}
+
+.search-input {
+  background: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #cccccc);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 4px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  width: 160px;
+  outline: none;
+  transition: width 0.2s ease, border-color 0.2s ease;
+}
+
+.search-input:focus {
+  width: 210px;
+  border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.search-count {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #888);
+  margin-left: 4px;
+}
+
+/* ------------------- Alert & Loading ------------------- */
+.error-banner {
+  background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-inputValidation-errorForeground, #ffcccc);
+  border-bottom: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+  padding: 8px 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.close-error-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 50;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(128, 128, 128, 0.3);
+  border-top-color: var(--badge-bg);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ------------------- Main Viewer Container ------------------- */
+.viewer-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+}
+
+.document-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: top center;
+  transition: transform 0.15s ease-out;
+}
+
+/* ------------------- Word (.docx) Styling ------------------- */
+/* docx-preview wrapper styling */
+.docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 20px !important;
+}
+
+.docx-wrapper > section.docx {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+  margin-bottom: 24px !important;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Word Dark Mode */
+body.theme-dark .docx-wrapper > section.docx,
+body.theme-high-contrast .docx-wrapper > section.docx {
+  background-color: #202124 !important;
+  color: #e8eaed !important;
+  border: 1px solid #3c4043 !important;
+}
+
+body.theme-dark .docx-wrapper p,
+body.theme-dark .docx-wrapper span,
+body.theme-dark .docx-wrapper h1,
+body.theme-dark .docx-wrapper h2,
+body.theme-dark .docx-wrapper h3,
+body.theme-dark .docx-wrapper h4,
+body.theme-dark .docx-wrapper h5,
+body.theme-dark .docx-wrapper h6,
+body.theme-dark .docx-wrapper li {
+  /* Allow explicit custom colored fonts if not purely black */
+}
+
+body.theme-dark .docx-wrapper table {
+  border-color: #555555 !important;
+}
+
+body.theme-dark .docx-wrapper td,
+body.theme-dark .docx-wrapper th {
+  border-color: #444444 !important;
+}
+
+/* Preserve images from being color-inverted */
+.docx-wrapper img,
+.docx-wrapper svg {
+  filter: none !important;
+  max-width: 100%;
+}
+
+/* Word Light Mode */
+body.theme-light .docx-wrapper > section.docx {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  border: 1px solid #d3d3d3 !important;
+}
+
+/* ------------------- Excel Grid Styling ------------------- */
+.excel-view-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.excel-grid-wrapper {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+}
+
+.excel-table {
+  border-collapse: collapse;
+  font-family: var(--primary-font);
+  font-size: 12px;
+  table-layout: auto;
+  min-width: 100%;
+}
+
+.excel-table th, .excel-table td {
+  border: 1px solid #444444;
+  padding: 5px 8px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 320px;
+}
+
+/* Row & Column Index Headers */
+.excel-table th.col-header,
+.excel-table th.corner-header,
+.excel-table td.row-header {
+  background-color: var(--toolbar-bg);
+  color: var(--vscode-descriptionForeground, #999999);
+  font-weight: 600;
+  text-align: center;
+  position: sticky;
+  z-index: 10;
+  user-select: none;
+}
+
+.excel-table th.col-header {
+  top: 0;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.excel-table th.col-header:hover {
+  background-color: var(--vscode-list-hoverBackground, rgba(255, 255, 255, 0.08));
+}
+
+.excel-table td.row-header {
+  left: 0;
+  min-width: 40px;
+  width: 40px;
+}
+
+.excel-table th.corner-header {
+  top: 0;
+  left: 0;
+  z-index: 20;
+  min-width: 40px;
+}
+
+/* Cell content */
+.excel-table td.cell-content {
+  background-color: transparent;
+  color: var(--fg-color);
+  cursor: cell;
+}
+
+.excel-table td.cell-content.selected {
+  outline: 2px solid #217346;
+  outline-offset: -2px;
+  background-color: rgba(33, 115, 70, 0.15) !important;
+}
+
+.excel-table td.cell-content.type-number {
+  text-align: right;
+  font-family: var(--mono-font);
+}
+
+.excel-table tr:hover td.cell-content {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Light Mode Excel Table */
+body.theme-light .excel-table th,
+body.theme-light .excel-table td {
+  border-color: #d0d0d0;
+}
+
+body.theme-light .excel-table th.col-header,
+body.theme-light .excel-table th.corner-header,
+body.theme-light .excel-table td.row-header {
+  background-color: #f3f3f3;
+  color: #555555;
+}
+
+body.theme-light .excel-table tr:hover td.cell-content {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* Sheet Tabs (Bottom Bar) */
+.sheet-tabs-bar {
+  display: flex;
+  align-items: center;
+  background-color: var(--toolbar-bg);
+  border-top: 1px solid var(--border-color);
+  padding: 0 8px;
+  overflow-x: auto;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.sheet-tab {
+  padding: 4px 12px;
+  font-size: 12px;
+  background-color: transparent;
+  color: var(--vscode-descriptionForeground, #888);
+  border: 1px solid transparent;
+  border-top: 2px solid transparent;
+  border-radius: 2px 2px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.sheet-tab:hover {
+  color: var(--fg-color);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sheet-tab.active {
+  color: var(--fg-color);
+  background-color: var(--bg-color);
+  border-top-color: #217346; /* Excel green indicator */
+  border-left-color: var(--border-color);
+  border-right-color: var(--border-color);
+  font-weight: 600;
+}
+
+/* ------------------- Legacy & Notice Callout ------------------- */
+.legacy-notice-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  margin-top: 40px;
+}
+
+.legacy-notice-card h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.legacy-notice-card p {
+  font-size: 13px;
+  color: var(--vscode-descriptionForeground, #999);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.legacy-extracted-text {
+  max-width: 800px;
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 20px;
+  white-space: pre-wrap;
+  font-family: var(--mono-font);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ------------------- Search Highlight ------------------- */
+mark.search-highlight {
+  background-color: var(--highlight-bg);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ------------------- Status Bar ------------------- */
+.doc-status-bar {
+  height: 24px;
+  background-color: var(--vscode-statusBar-background, #007acc);
+  color: var(--vscode-statusBar-foreground, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 11px;
+  flex-shrink: 0;
+  user-select: none;
+  font-family: var(--primary-font);
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ------------------- Print Optimization ------------------- */
+@media print {
+  .app-toolbar,
+  .sheet-tabs-bar,
+  .doc-status-bar,
+  .error-banner,
+  .loading-overlay {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .viewer-container {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .document-content {
+    transform: none !important;
+  }
+
+  .docx-wrapper > section.docx {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+  }
+
+  .excel-table th,
+  .excel-table td {
+    border-color: #000000 !important;
+    color: #000000 !important;
+  }
+}
+
+/* ------------------- Utilities ------------------- */
+.hidden {
+  display: none !important;
+}
+

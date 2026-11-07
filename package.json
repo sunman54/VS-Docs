@@ -1,0 +1,58 @@
+{
+  "name": "vcdocs-viewer",
+  "displayName": "Universal Document Viewer (Word, Excel)",
+  "description": "Read-only viewer for Word (.docx, .doc), Excel (.xlsx, .xls, .csv) with adaptive Dark Mode in VS Code",
+  "version": "0.1.0",
+  "publisher": "vcdocs",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCustomEditor:vcdocs.docViewer"
+  ],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "vcdocs.docViewer",
+        "displayName": "Universal Document Viewer",
+        "selector": [
+          { "filenamePattern": "*.docx" },
+          { "filenamePattern": "*.doc" },
+          { "filenamePattern": "*.xlsx" },
+          { "filenamePattern": "*.xls" },
+          { "filenamePattern": "*.xlsm" },
+          { "filenamePattern": "*.csv" },
+          { "filenamePattern": "*.tsv" }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "vcdocs.openViewer",
+        "title": "Open with Universal Document Viewer"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node test/testParsers.js"
+  },
+  "devDependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/node": "^22.9.0",
+    "@types/vscode": "^1.85.0",
+    "docx-preview": "^0.3.1",
+    "dompurify": "^3.2.1",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3",
+    "xlsx": "^0.18.5"
+  }
+}
