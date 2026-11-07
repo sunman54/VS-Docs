@@ -4,6 +4,7 @@
   "description": "Read-only viewer for Word (.docx, .doc), Excel (.xlsx, .xls, .csv, .ods), PDF (.pdf), ODT (.odt), RTF (.rtf) with adaptive Dark Mode in VS Code",
   "version": "1.0.0",
   "publisher": "vcdocs",
+  "icon": "assets/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -80,7 +81,16 @@
         "command": "vcdocs.openViewer",
         "title": "Open with VS Docs"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "vcdocs.openViewer",
+          "when": "resourceExt == .docx || resourceExt == .doc || resourceExt == .xlsx || resourceExt == .xls || resourceExt == .xlsm || resourceExt == .csv || resourceExt == .tsv || resourceExt == .ods || resourceExt == .odt || resourceExt == .pdf || resourceExt == .rtf",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
