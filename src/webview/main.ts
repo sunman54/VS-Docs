@@ -154,6 +154,52 @@ class WebviewApp {
         this.performSearch(this.searchInput?.value || '');
       }, 250);
     });
+
+    // Keyboard Shortcuts (Ctrl+F, Ctrl+P, Zoom +/-, Escape)
+    window.addEventListener('keydown', (e) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+
+      // Ctrl + F: Quick Search
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        if (this.searchInput) {
+          this.searchInput.focus();
+          this.searchInput.select();
+        }
+      }
+
+      // Ctrl + P: Print / Export to PDF
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        window.print();
+      }
+
+      // Ctrl + Plus / Equals: Zoom In
+      if (isCmdOrCtrl && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        this.adjustZoom(0.1);
+      }
+
+      // Ctrl + Minus: Zoom Out
+      if (isCmdOrCtrl && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        this.adjustZoom(-0.1);
+      }
+
+      // Ctrl + 0: Reset Zoom
+      if (isCmdOrCtrl && e.key === '0') {
+        e.preventDefault();
+        this.resetZoom();
+      }
+
+      // Escape: Close Outline, Popups, and clear search focus
+      if (e.key === 'Escape') {
+        this.outlineManager?.close();
+        if (document.activeElement === this.searchInput) {
+          this.searchInput?.blur();
+        }
+      }
+    });
   }
 
   private initMessageListener() {
